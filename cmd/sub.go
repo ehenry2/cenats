@@ -42,7 +42,7 @@ to quickly create a Cobra application.`,
 		if err != nil {
 			log.Fatalln(err)
 		}
-		fmt.Println("Listening for events...")
+		log.Println("Listening for events...")
 		handler.Handle()
 	},
 }
