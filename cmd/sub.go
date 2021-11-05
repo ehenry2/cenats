@@ -17,8 +17,10 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
+	"github.com/ehenry2/cenats/internal/sub"
 )
 
 // subCmd represents the sub command
@@ -32,7 +34,16 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("sub called")
+		receiver, err := sub.NewNatsReceiver(natsURL, subject)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		handler, err := sub.NewHandler(receiver)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Println("Listening for events...")
+		handler.Handle()
 	},
 }
 
@@ -44,7 +55,6 @@ func init() {
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
 	// subCmd.PersistentFlags().String("foo", "", "A help for foo")
-
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// subCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")

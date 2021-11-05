@@ -1,28 +1,17 @@
-/*
-Copyright © 2021 NAME HERE <EMAIL ADDRESS>
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"log"
+	"os"
 
+	"github.com/ehenry2/cenats/internal/pub"
 	"github.com/spf13/cobra"
 )
 
 var (
-	subject, natsURL, eventPayloadFile string
+	eventPayloadFile, eventSource, eventType string
 )
 
 // pubCmd represents the pub command
@@ -32,6 +21,23 @@ var pubCmd = &cobra.Command{
 	Long: `Publish a message in CloudEvents format to a NATS message queue`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("pub called")
+		s, err := pub.NewNatsSender(subject, natsURL)
+		if err != nil {
+			log.Fatalf("failed to initialize nats client: %s\n", err)
+		}
+		f, err := os.Open(eventPayloadFile)
+		if err != nil {
+			log.Fatalf("failed to open payload file: %s\n", err)
+		}
+		h, err := pub.NewHandler(s, f)
+		if err != nil {
+			log.Fatalf("failed to initialize cloud events publisher: %s\n", err)
+		}
+		ctx := context.Background()
+		if err = h.Handle(ctx, eventType, eventSource); err != nil {
+			log.Fatalf("failed to publish event: %s\n", err)
+		}
+		log.Println("message published successfully")
 	},
 }
 
@@ -42,12 +48,12 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	pubCmd.Flags().StringVarP(&subject, "subject", "s", "",
-		"NATS subject to publish to. In NATS, subjects scope messages into streams or topics. (required)")
-	_ = pubCmd.MarkFlagRequired("subject")
-	pubCmd.Flags().StringVarP(&natsURL, "url", "u", "nats://127.0.0.1:4222",
-		"URL of the NATS server")
+
 	pubCmd.Flags().StringVarP(&eventPayloadFile, "payloadFile", "f", "",
 		"Path to json file containing the event payload (required)")
 	_ = pubCmd.MarkFlagRequired("payloadFile")
+	pubCmd.Flags().StringVarP(&eventType, "eventType", "t", "custom.default_event",
+		"CloudEvents event type of your event")
+	pubCmd.Flags().StringVarP(&eventSource, "eventSource", "", "mysource",
+		"CloudEvents event source")
 }
